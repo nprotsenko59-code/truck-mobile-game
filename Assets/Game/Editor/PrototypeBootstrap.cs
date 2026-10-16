@@ -105,27 +105,58 @@ namespace TruckGame.Editor
             RenderSettings.ambientSkyColor = new Color(0.45f, 0.58f, 0.72f);
             RenderSettings.ambientEquatorColor = new Color(0.3f, 0.34f, 0.35f);
             RenderSettings.ambientGroundColor = new Color(0.12f, 0.14f, 0.12f);
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = new Color(0.68f, 0.78f, 0.84f);
+            RenderSettings.fogStartDistance = 55f;
+            RenderSettings.fogEndDistance = 190f;
         }
 
         private static void CreateRoad()
         {
             var roadMaterial = EnsureMaterial(
                 "Assets/Game/Materials/Road.mat",
-                new Color(0.12f, 0.14f, 0.16f));
+                new Color(0.105f, 0.125f, 0.15f),
+                0.12f);
             var grassMaterial = EnsureMaterial(
                 "Assets/Game/Materials/Ground.mat",
-                new Color(0.18f, 0.33f, 0.14f));
+                new Color(0.16f, 0.31f, 0.14f),
+                0.05f);
             var lineMaterial = EnsureMaterial(
                 "Assets/Game/Materials/RoadLine.mat",
-                new Color(0.95f, 0.78f, 0.18f));
+                new Color(1f, 0.72f, 0.08f),
+                0.25f);
+            var edgeLineMaterial = EnsureMaterial(
+                "Assets/Game/Materials/EdgeLine.mat",
+                new Color(0.92f, 0.94f, 0.92f),
+                0.2f);
+            var shoulderMaterial = EnsureMaterial(
+                "Assets/Game/Materials/Shoulder.mat",
+                new Color(0.34f, 0.29f, 0.23f),
+                0.05f);
+            var markerMaterial = EnsureMaterial(
+                "Assets/Game/Materials/RoadMarker.mat",
+                new Color(0.96f, 0.94f, 0.86f),
+                0.18f);
 
-            CreateBox("Road", new Vector3(0f, -0.3f, 55f), new Vector3(12f, 0.6f, 120f), roadMaterial);
-            CreateBox("Ground Left", new Vector3(-31f, -0.55f, 55f), new Vector3(50f, 0.5f, 120f), grassMaterial);
-            CreateBox("Ground Right", new Vector3(31f, -0.55f, 55f), new Vector3(50f, 0.5f, 120f), grassMaterial);
+            CreateBox("Road", new Vector3(0f, -0.3f, 55f), new Vector3(14f, 0.6f, 120f), roadMaterial);
+            CreateBox("Left Shoulder", new Vector3(-7.6f, -0.18f, 55f), new Vector3(1.2f, 0.2f, 120f), shoulderMaterial);
+            CreateBox("Right Shoulder", new Vector3(7.6f, -0.18f, 55f), new Vector3(1.2f, 0.2f, 120f), shoulderMaterial);
+            CreateBox("Ground Left", new Vector3(-35.7f, -0.55f, 55f), new Vector3(55f, 0.5f, 120f), grassMaterial);
+            CreateBox("Ground Right", new Vector3(35.7f, -0.55f, 55f), new Vector3(55f, 0.5f, 120f), grassMaterial);
+
+            CreateVisualBox("Left Edge Line", new Vector3(-6.55f, 0.025f, 55f), new Vector3(0.16f, 0.05f, 116f), edgeLineMaterial);
+            CreateVisualBox("Right Edge Line", new Vector3(6.55f, 0.025f, 55f), new Vector3(0.16f, 0.05f, 116f), edgeLineMaterial);
 
             for (var z = 4f; z < 112f; z += 8f)
             {
-                CreateBox("Centre Line", new Vector3(0f, 0.025f, z), new Vector3(0.16f, 0.05f, 4f), lineMaterial);
+                CreateVisualBox("Centre Line", new Vector3(0f, 0.03f, z), new Vector3(0.18f, 0.06f, 4f), lineMaterial);
+            }
+
+            for (var z = 8f; z < 116f; z += 18f)
+            {
+                CreateRoadsideMarker(new Vector3(-8.35f, 0.55f, z), markerMaterial, lineMaterial);
+                CreateRoadsideMarker(new Vector3(8.35f, 0.55f, z), markerMaterial, lineMaterial);
             }
         }
 
@@ -146,18 +177,52 @@ namespace TruckGame.Editor
 
             var bodyMaterial = EnsureMaterial(
                 "Assets/Game/Materials/TruckBody.mat",
-                new Color(0.08f, 0.44f, 0.82f));
+                new Color(0.03f, 0.34f, 0.78f),
+                0.42f);
+            var cargoMaterial = EnsureMaterial(
+                "Assets/Game/Materials/TruckCargo.mat",
+                new Color(0.82f, 0.86f, 0.88f),
+                0.25f);
             var wheelMaterial = EnsureMaterial(
                 "Assets/Game/Materials/Tire.mat",
-                new Color(0.025f, 0.025f, 0.03f));
+                new Color(0.018f, 0.022f, 0.028f),
+                0.18f);
+            var darkMaterial = EnsureMaterial(
+                "Assets/Game/Materials/TruckDark.mat",
+                new Color(0.035f, 0.055f, 0.075f),
+                0.38f);
+            var glassMaterial = EnsureMaterial(
+                "Assets/Game/Materials/TruckGlass.mat",
+                new Color(0.24f, 0.65f, 0.82f),
+                0.72f);
+            var metalMaterial = EnsureMaterial(
+                "Assets/Game/Materials/TruckMetal.mat",
+                new Color(0.52f, 0.58f, 0.62f),
+                0.7f,
+                0.65f);
+            var lightMaterial = EnsureMaterial(
+                "Assets/Game/Materials/TruckLight.mat",
+                new Color(1f, 0.85f, 0.42f),
+                0.55f);
 
-            var cab = CreateBox("Cab", Vector3.zero, new Vector3(2.5f, 2.3f, 3f), bodyMaterial);
+            var cab = CreateBox("Cab", Vector3.zero, new Vector3(2.5f, 2.25f, 2.1f), bodyMaterial);
             cab.transform.SetParent(truck.transform, false);
-            cab.transform.localPosition = new Vector3(0f, 1.15f, 1.2f);
+            cab.transform.localPosition = new Vector3(0f, 1.15f, 1.35f);
 
-            var chassis = CreateBox("Chassis", Vector3.zero, new Vector3(2.35f, 0.5f, 5.8f), bodyMaterial);
+            var cargo = CreateBox("Cargo Box", Vector3.zero, new Vector3(2.45f, 2.65f, 3.15f), cargoMaterial);
+            cargo.transform.SetParent(truck.transform, false);
+            cargo.transform.localPosition = new Vector3(0f, 1.35f, -1.25f);
+
+            var chassis = CreateBox("Chassis", Vector3.zero, new Vector3(2.35f, 0.42f, 5.6f), darkMaterial);
             chassis.transform.SetParent(truck.transform, false);
-            chassis.transform.localPosition = new Vector3(0f, 0.45f, -0.3f);
+            chassis.transform.localPosition = new Vector3(0f, 0.42f, -0.25f);
+
+            CreateTruckDetail(truck.transform, "Windshield", new Vector3(0f, 1.48f, 2.415f), new Vector3(1.85f, 0.62f, 0.045f), glassMaterial);
+            CreateTruckDetail(truck.transform, "Front Grille", new Vector3(0f, 0.72f, 2.42f), new Vector3(1.45f, 0.34f, 0.05f), darkMaterial);
+            CreateTruckDetail(truck.transform, "Front Bumper", new Vector3(0f, 0.3f, 2.49f), new Vector3(2.7f, 0.2f, 0.22f), metalMaterial);
+            CreateTruckDetail(truck.transform, "Left Headlight", new Vector3(-0.86f, 0.86f, 2.45f), new Vector3(0.34f, 0.28f, 0.07f), lightMaterial);
+            CreateTruckDetail(truck.transform, "Right Headlight", new Vector3(0.86f, 0.86f, 2.45f), new Vector3(0.34f, 0.28f, 0.07f), lightMaterial);
+            CreateTruckDetail(truck.transform, "Cargo Accent", new Vector3(0f, 1.25f, -2.84f), new Vector3(1.95f, 0.18f, 0.045f), bodyMaterial);
 
             var front = new WheelCollider[2];
             var rear = new WheelCollider[2];
@@ -170,6 +235,24 @@ namespace TruckGame.Editor
             controller.Configure(body, input, tuning, front, rear);
             visualSync.Configure(bindings.ToArray());
             return truck;
+        }
+
+        private static void CreateTruckDetail(
+            Transform parent,
+            string name,
+            Vector3 localPosition,
+            Vector3 localScale,
+            Material material)
+        {
+            var detail = CreateVisualBox(name, Vector3.zero, localScale, material);
+            detail.transform.SetParent(parent, false);
+            detail.transform.localPosition = localPosition;
+        }
+
+        private static void CreateRoadsideMarker(Vector3 position, Material postMaterial, Material reflectorMaterial)
+        {
+            CreateVisualBox("Roadside Marker", position, new Vector3(0.16f, 1.1f, 0.16f), postMaterial);
+            CreateVisualBox("Roadside Reflector", position + new Vector3(0f, 0.28f, 0f), new Vector3(0.21f, 0.22f, 0.2f), reflectorMaterial);
         }
 
         private static WheelCollider CreateWheel(
@@ -234,17 +317,29 @@ namespace TruckGame.Editor
             return box;
         }
 
-        private static Material EnsureMaterial(string path, Color color)
+        private static GameObject CreateVisualBox(string name, Vector3 position, Vector3 scale, Material material)
+        {
+            var box = CreateBox(name, position, scale, material);
+            Object.DestroyImmediate(box.GetComponent<Collider>());
+            return box;
+        }
+
+        private static Material EnsureMaterial(string path, Color color, float smoothness, float metallic = 0f)
         {
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (material != null)
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            if (material == null)
             {
-                return material;
+                material = new Material(shader);
+                AssetDatabase.CreateAsset(material, path);
             }
 
-            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
-            material = new Material(shader) { color = color };
-            AssetDatabase.CreateAsset(material, path);
+            material.shader = shader;
+            material.color = color;
+            material.SetColor("_BaseColor", color);
+            material.SetFloat("_Smoothness", smoothness);
+            material.SetFloat("_Metallic", metallic);
+            EditorUtility.SetDirty(material);
             return material;
         }
 
