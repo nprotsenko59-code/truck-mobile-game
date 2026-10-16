@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ec63b53640aa456899ba1e33aeabfb9, type: 3}
+  m_Name: PrototypeTruckTuning
+  m_EditorClassIdentifier: TruckGame.Runtime::TruckGame.Driving.TruckTuning
+  targetSpeedMps: 16
+  motorTorque: 2400
+  overspeedBrakeTorque: 3500
+  lowSpeedReferenceMps: 5
+  highSpeedReferenceMps: 22
+  lowSpeedSteerAngle: 28
+  highSpeedSteerAngle: 9
+  steeringResponsePerSecond: 2.6
+  steeringRecenterPerSecond: 3.8
+  antiRollForce: 11000
+  downforcePerMps: 180
+  centerOfMassOffset: {x: 0, y: -0.7, z: 0.1}

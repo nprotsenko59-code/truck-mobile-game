@@ -1,0 +1,11 @@
+{
+  "name": "TruckGame.PlayModeTests",
+  "rootNamespace": "TruckGame.Tests",
+  "references": [
+    "TruckGame.Runtime"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "autoReferenced": false
+}

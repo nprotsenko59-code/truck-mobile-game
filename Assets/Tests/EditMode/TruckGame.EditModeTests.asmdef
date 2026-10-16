@@ -1,0 +1,15 @@
+{
+  "name": "TruckGame.EditModeTests",
+  "rootNamespace": "TruckGame.Tests",
+  "references": [
+    "TruckGame.Runtime"
+  ],
+  "optionalUnityReferences": [
+    "TestAssemblies"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": false
+}
+

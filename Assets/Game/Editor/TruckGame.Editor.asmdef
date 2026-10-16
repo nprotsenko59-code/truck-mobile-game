@@ -1,0 +1,14 @@
+{
+  "name": "TruckGame.Editor",
+  "rootNamespace": "TruckGame.Editor",
+  "references": [
+    "TruckGame.Runtime",
+    "Unity.RenderPipelines.Core.Runtime",
+    "Unity.RenderPipelines.Universal.Runtime"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "autoReferenced": true
+}
+

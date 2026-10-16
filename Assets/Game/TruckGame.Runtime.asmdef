@@ -1,0 +1,9 @@
+{
+  "name": "TruckGame.Runtime",
+  "rootNamespace": "TruckGame",
+  "references": [
+    "Unity.InputSystem"
+  ],
+  "autoReferenced": true
+}
+
