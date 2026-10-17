@@ -138,25 +138,100 @@ namespace TruckGame.Editor
                 "Assets/Game/Materials/RoadMarker.mat",
                 new Color(0.96f, 0.94f, 0.86f),
                 0.18f);
+            var barrierMaterial = EnsureMaterial(
+                "Assets/Game/Materials/Barrier.mat",
+                new Color(0.62f, 0.67f, 0.69f),
+                0.6f,
+                0.45f);
 
-            CreateBox("Road", new Vector3(0f, -0.3f, 55f), new Vector3(14f, 0.6f, 120f), roadMaterial);
-            CreateBox("Left Shoulder", new Vector3(-7.6f, -0.18f, 55f), new Vector3(1.2f, 0.2f, 120f), shoulderMaterial);
-            CreateBox("Right Shoulder", new Vector3(7.6f, -0.18f, 55f), new Vector3(1.2f, 0.2f, 120f), shoulderMaterial);
-            CreateBox("Ground Left", new Vector3(-35.7f, -0.55f, 55f), new Vector3(55f, 0.5f, 120f), grassMaterial);
-            CreateBox("Ground Right", new Vector3(35.7f, -0.55f, 55f), new Vector3(55f, 0.5f, 120f), grassMaterial);
+            // A single flat collision surface keeps the greybox drive smooth while the
+            // visual road tiles provide the route shape above it.
+            CreateBox("Terrain", new Vector3(15f, -0.3f, 105f), new Vector3(300f, 0.6f, 300f), grassMaterial);
 
-            CreateVisualBox("Left Edge Line", new Vector3(-6.55f, 0.025f, 55f), new Vector3(0.16f, 0.05f, 116f), edgeLineMaterial);
-            CreateVisualBox("Right Edge Line", new Vector3(6.55f, 0.025f, 55f), new Vector3(0.16f, 0.05f, 116f), edgeLineMaterial);
+            const float segmentLength = 12f;
+            const float roadWidth = 14f;
+            const float edgeOffset = 6.55f;
+            const float shoulderOffset = 7.6f;
+            const float markerOffset = 8.45f;
 
-            for (var z = 4f; z < 112f; z += 8f)
+            var yaws = new[]
             {
-                CreateVisualBox("Centre Line", new Vector3(0f, 0.03f, z), new Vector3(0.18f, 0.06f, 4f), lineMaterial);
-            }
+                0f, 0f, 0f, 4f, 8f, 12f, 16f, 20f, 20f, 16f, 12f, 8f, 4f,
+                0f, -4f, -8f, -12f, -16f, -20f, -20f, -16f, -12f, -8f, -4f,
+                0f, 0f
+            };
 
-            for (var z = 8f; z < 116f; z += 18f)
+            var cursor = new Vector3(0f, 0f, -18f);
+            for (var index = 0; index < yaws.Length; index++)
             {
-                CreateRoadsideMarker(new Vector3(-8.35f, 0.55f, z), markerMaterial, lineMaterial);
-                CreateRoadsideMarker(new Vector3(8.35f, 0.55f, z), markerMaterial, lineMaterial);
+                var rotation = Quaternion.Euler(0f, yaws[index], 0f);
+                var forward = rotation * Vector3.forward;
+                var right = rotation * Vector3.right;
+                var centre = cursor + forward * (segmentLength * 0.5f);
+
+                CreateVisualRouteBox(
+                    $"Road {index + 1:00}",
+                    centre + Vector3.up * 0.025f,
+                    new Vector3(roadWidth, 0.05f, segmentLength + 1.1f),
+                    roadMaterial,
+                    rotation);
+                CreateVisualRouteBox(
+                    $"Left Shoulder {index + 1:00}",
+                    centre - right * shoulderOffset + Vector3.up * 0.018f,
+                    new Vector3(1.35f, 0.035f, segmentLength + 1.1f),
+                    shoulderMaterial,
+                    rotation);
+                CreateVisualRouteBox(
+                    $"Right Shoulder {index + 1:00}",
+                    centre + right * shoulderOffset + Vector3.up * 0.018f,
+                    new Vector3(1.35f, 0.035f, segmentLength + 1.1f),
+                    shoulderMaterial,
+                    rotation);
+                CreateVisualRouteBox(
+                    $"Left Edge Line {index + 1:00}",
+                    centre - right * edgeOffset + Vector3.up * 0.06f,
+                    new Vector3(0.16f, 0.04f, segmentLength + 0.5f),
+                    edgeLineMaterial,
+                    rotation);
+                CreateVisualRouteBox(
+                    $"Right Edge Line {index + 1:00}",
+                    centre + right * edgeOffset + Vector3.up * 0.06f,
+                    new Vector3(0.16f, 0.04f, segmentLength + 0.5f),
+                    edgeLineMaterial,
+                    rotation);
+                CreateVisualRouteBox(
+                    $"Centre Line {index + 1:00}",
+                    centre + Vector3.up * 0.065f,
+                    new Vector3(0.18f, 0.045f, 5.2f),
+                    lineMaterial,
+                    rotation);
+
+                if (index % 2 == 0)
+                {
+                    CreateRoadsideMarker(centre - right * markerOffset, rotation, markerMaterial, lineMaterial);
+                    CreateRoadsideMarker(centre + right * markerOffset, rotation, markerMaterial, lineMaterial);
+                }
+
+                if (index is >= 6 and <= 9)
+                {
+                    CreateRotatedBox(
+                        "Outer Curve Barrier",
+                        centre - right * 6.95f + Vector3.up * 0.35f,
+                        new Vector3(0.22f, 0.7f, segmentLength + 0.8f),
+                        barrierMaterial,
+                        rotation);
+                }
+                else if (index is >= 16 and <= 19)
+                {
+                    CreateRotatedBox(
+                        "Outer Curve Barrier",
+                        centre + right * 6.95f + Vector3.up * 0.35f,
+                        new Vector3(0.22f, 0.7f, segmentLength + 0.8f),
+                        barrierMaterial,
+                        rotation);
+                }
+
+                cursor += forward * segmentLength;
             }
         }
 
@@ -249,10 +324,24 @@ namespace TruckGame.Editor
             detail.transform.localPosition = localPosition;
         }
 
-        private static void CreateRoadsideMarker(Vector3 position, Material postMaterial, Material reflectorMaterial)
+        private static void CreateRoadsideMarker(
+            Vector3 position,
+            Quaternion rotation,
+            Material postMaterial,
+            Material reflectorMaterial)
         {
-            CreateVisualBox("Roadside Marker", position, new Vector3(0.16f, 1.1f, 0.16f), postMaterial);
-            CreateVisualBox("Roadside Reflector", position + new Vector3(0f, 0.28f, 0f), new Vector3(0.21f, 0.22f, 0.2f), reflectorMaterial);
+            CreateVisualRouteBox(
+                "Roadside Marker",
+                position + Vector3.up * 0.55f,
+                new Vector3(0.16f, 1.1f, 0.16f),
+                postMaterial,
+                rotation);
+            CreateVisualRouteBox(
+                "Roadside Reflector",
+                position + Vector3.up * 0.83f,
+                new Vector3(0.21f, 0.22f, 0.2f),
+                reflectorMaterial,
+                rotation);
         }
 
         private static WheelCollider CreateWheel(
@@ -320,6 +409,30 @@ namespace TruckGame.Editor
         private static GameObject CreateVisualBox(string name, Vector3 position, Vector3 scale, Material material)
         {
             var box = CreateBox(name, position, scale, material);
+            Object.DestroyImmediate(box.GetComponent<Collider>());
+            return box;
+        }
+
+        private static GameObject CreateRotatedBox(
+            string name,
+            Vector3 position,
+            Vector3 scale,
+            Material material,
+            Quaternion rotation)
+        {
+            var box = CreateBox(name, position, scale, material);
+            box.transform.rotation = rotation;
+            return box;
+        }
+
+        private static GameObject CreateVisualRouteBox(
+            string name,
+            Vector3 position,
+            Vector3 scale,
+            Material material,
+            Quaternion rotation)
+        {
+            var box = CreateRotatedBox(name, position, scale, material, rotation);
             Object.DestroyImmediate(box.GetComponent<Collider>());
             return box;
         }
