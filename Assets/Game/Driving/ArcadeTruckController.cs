@@ -1,3 +1,4 @@
+using TruckGame.Fuel;
 using TruckGame.Input;
 using UnityEngine;
 
@@ -9,6 +10,7 @@ namespace TruckGame.Driving
         [SerializeField] private Rigidbody body;
         [SerializeField] private SteeringInput steeringInput;
         [SerializeField] private TruckTuning tuning;
+        [SerializeField] private FuelTank fuelTank;
         [SerializeField] private WheelCollider[] frontWheels;
         [SerializeField] private WheelCollider[] rearWheels;
 
@@ -16,6 +18,7 @@ namespace TruckGame.Driving
 
         public float SpeedMps => body == null ? 0f : body.linearVelocity.magnitude;
         public float CurrentSteering => currentSteering;
+        public bool HasPower => fuelTank == null || fuelTank.HasFuel;
 
         public void Configure(
             Rigidbody truckBody,
@@ -32,10 +35,16 @@ namespace TruckGame.Driving
             ApplyBodySettings();
         }
 
+        public void ConfigureFuelTank(FuelTank tank)
+        {
+            fuelTank = tank;
+        }
+
         private void Awake()
         {
             body ??= GetComponent<Rigidbody>();
             steeringInput ??= GetComponent<SteeringInput>();
+            fuelTank ??= GetComponent<FuelTank>();
             ApplyBodySettings();
         }
 
@@ -99,8 +108,9 @@ namespace TruckGame.Driving
             }
 
             var forwardSpeed = Vector3.Dot(body.linearVelocity, transform.forward);
-            var shouldAccelerate = forwardSpeed < tuning.targetSpeedMps;
+            var shouldAccelerate = HasPower && forwardSpeed < tuning.targetSpeedMps;
             var shouldBrake = forwardSpeed > tuning.targetSpeedMps + 0.75f;
+            var isOutOfFuel = !HasPower;
 
             foreach (var wheel in rearWheels)
             {
@@ -110,7 +120,9 @@ namespace TruckGame.Driving
                 }
 
                 wheel.motorTorque = shouldAccelerate ? tuning.motorTorque : 0f;
-                wheel.brakeTorque = shouldBrake ? tuning.overspeedBrakeTorque : 0f;
+                wheel.brakeTorque = shouldBrake
+                    ? tuning.overspeedBrakeTorque
+                    : isOutOfFuel ? tuning.outOfFuelBrakeTorque : 0f;
             }
         }
 
@@ -150,4 +162,3 @@ namespace TruckGame.Driving
         }
     }
 }
-

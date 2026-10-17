@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using TruckGame.CameraSystem;
 using TruckGame.Core;
 using TruckGame.Driving;
+using TruckGame.Fuel;
 using TruckGame.Input;
 using TruckGame.Traffic;
 using UnityEditor;
@@ -27,6 +28,7 @@ namespace TruckGame.Editor
             EnsureFolder("Assets/Game/Scenes");
             EnsureFolder("Assets/Game/Settings");
             EnsureFolder("Assets/Game/Materials");
+            EnsureFolder("Assets/Game/Fuel");
 
             var pipeline = EnsureRenderPipeline();
             var tuning = EnsureTuning();
@@ -37,6 +39,7 @@ namespace TruckGame.Editor
             var route = CreateRoad();
             var truck = CreateTruck(tuning);
             CreateTraffic(route);
+            CreateFuelSystem(truck, route);
             CreateCamera(truck.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -277,11 +280,11 @@ namespace TruckGame.Editor
                 0.18f);
 
             var root = new GameObject("Traffic");
-            CreateTrafficVehicle(root.transform, "Slow Red Car", route, red, dark, glass, tire, -2.6f, 9.5f, false, 5);
-            CreateTrafficVehicle(root.transform, "Yellow Van", route, yellow, dark, glass, tire, -2.6f, 11f, false, 15);
-            CreateTrafficVehicle(root.transform, "Oncoming Teal Car", route, teal, dark, glass, tire, 2.6f, 14f, true, 9);
-            CreateTrafficVehicle(root.transform, "Oncoming White Car", route, white, dark, glass, tire, 2.6f, 13f, true, 18);
-            CreateTrafficVehicle(root.transform, "Oncoming Red Car", route, red, dark, glass, tire, 2.6f, 15f, true, 24);
+            CreateTrafficVehicle(root.transform, "Slow Red Car", route, red, dark, glass, tire, 2.6f, 9.5f, false, 5);
+            CreateTrafficVehicle(root.transform, "Yellow Van", route, yellow, dark, glass, tire, 2.6f, 11f, false, 15);
+            CreateTrafficVehicle(root.transform, "Oncoming Teal Car", route, teal, dark, glass, tire, -2.6f, 14f, true, 9);
+            CreateTrafficVehicle(root.transform, "Oncoming White Car", route, white, dark, glass, tire, -2.6f, 13f, true, 18);
+            CreateTrafficVehicle(root.transform, "Oncoming Red Car", route, red, dark, glass, tire, -2.6f, 15f, true, 24);
         }
 
         private static void CreateTrafficVehicle(
@@ -348,7 +351,7 @@ namespace TruckGame.Editor
         private static GameObject CreateTruck(TruckTuning tuning)
         {
             var truck = new GameObject("Prototype Truck");
-            truck.transform.position = new Vector3(-2.5f, 1.1f, 0f);
+            truck.transform.position = new Vector3(2.5f, 1.1f, 0f);
 
             var body = truck.AddComponent<Rigidbody>();
             body.mass = 4500f;
@@ -357,6 +360,8 @@ namespace TruckGame.Editor
 
             var input = truck.AddComponent<SteeringInput>();
             var controller = truck.AddComponent<ArcadeTruckController>();
+            var fuelTank = truck.AddComponent<FuelTank>();
+            fuelTank.Configure(100f, 52f, 3.2f, 0.35f, 0.15f);
             truck.AddComponent<TruckRecovery>();
             var visualSync = truck.AddComponent<WheelVisualSync>();
 
@@ -418,8 +423,146 @@ namespace TruckGame.Editor
             rear[1] = CreateWheel(truck.transform, "Rear Right", new Vector3(1.15f, 0.45f, -1.9f), wheelMaterial, bindings);
 
             controller.Configure(body, input, tuning, front, rear);
+            controller.ConfigureFuelTank(fuelTank);
             visualSync.Configure(bindings.ToArray());
             return truck;
+        }
+
+        private static void CreateFuelSystem(GameObject truck, TrafficRoute route)
+        {
+            var laneMaterial = EnsureMaterial(
+                "Assets/Game/Materials/FuelLane.mat",
+                new Color(0.075f, 0.11f, 0.14f),
+                0.18f);
+            var fuelBlue = EnsureMaterial(
+                "Assets/Game/Materials/FuelBlue.mat",
+                new Color(0.03f, 0.72f, 0.88f),
+                0.55f);
+            var fuelOrange = EnsureMaterial(
+                "Assets/Game/Materials/FuelOrange.mat",
+                new Color(1f, 0.42f, 0.04f),
+                0.42f);
+            var stationWhite = EnsureMaterial(
+                "Assets/Game/Materials/FuelStationWhite.mat",
+                new Color(0.88f, 0.91f, 0.9f),
+                0.32f);
+            var stationDark = EnsureMaterial(
+                "Assets/Game/Materials/FuelStationDark.mat",
+                new Color(0.045f, 0.065f, 0.08f),
+                0.25f);
+
+            var stationRoot = new GameObject("Right-Side Fuel Station");
+            var offsets = new[] { 6.8f, 8.5f, 10f, 10f, 8.5f, 6.8f };
+            for (var index = 0; index < offsets.Length; index++)
+            {
+                var routeIndex = 9 + index;
+                var forward = route.GetForward(routeIndex);
+                var rotation = Quaternion.LookRotation(forward, Vector3.up);
+                var centre = route.GetLanePoint(routeIndex, offsets[index]) + forward * 5.8f;
+                var lane = CreateVisualRouteBox(
+                    $"Station Lane {index + 1:00}",
+                    centre + Vector3.up * 0.08f,
+                    new Vector3(4.8f, 0.08f, 13f),
+                    laneMaterial,
+                    rotation);
+                lane.transform.SetParent(stationRoot.transform);
+
+                var right = Vector3.Cross(Vector3.up, forward).normalized;
+                var outerLine = CreateVisualRouteBox(
+                    "Station Lane Guide",
+                    centre + right * 2.25f + Vector3.up * 0.14f,
+                    new Vector3(0.18f, 0.045f, 10f),
+                    fuelBlue,
+                    rotation);
+                outerLine.transform.SetParent(stationRoot.transform);
+            }
+
+            const int stationIndex = 12;
+            const float stationOffset = 10f;
+            var stationForward = route.GetForward(stationIndex);
+            var stationRight = Vector3.Cross(Vector3.up, stationForward).normalized;
+            var stationRotation = Quaternion.LookRotation(stationForward, Vector3.up);
+            var stationCentre = route.GetLanePoint(stationIndex, stationOffset);
+
+            var canopy = CreateVisualRouteBox(
+                "Fuel Canopy",
+                stationCentre + stationRight * 4.5f + Vector3.up * 3.9f,
+                new Vector3(8f, 0.45f, 8f),
+                stationWhite,
+                stationRotation);
+            canopy.transform.SetParent(stationRoot.transform);
+            CreateStationPost(stationRoot.transform, stationCentre + stationRight * 2.4f, stationRotation, fuelBlue);
+            CreateStationPost(stationRoot.transform, stationCentre + stationRight * 6.6f, stationRotation, fuelBlue);
+
+            var building = CreateVisualRouteBox(
+                "Fuel Station Building",
+                stationCentre + stationRight * 9f + Vector3.up * 1.45f,
+                new Vector3(4.4f, 2.9f, 7f),
+                stationDark,
+                stationRotation);
+            building.transform.SetParent(stationRoot.transform);
+
+            var archLeft = CreateVisualRouteBox(
+                "Fuel Arch Left",
+                stationCentre - stationRight * 2.3f + Vector3.up * 2.1f,
+                new Vector3(0.34f, 4.2f, 0.34f),
+                fuelBlue,
+                stationRotation);
+            archLeft.transform.SetParent(stationRoot.transform);
+            var archRight = CreateVisualRouteBox(
+                "Fuel Arch Right",
+                stationCentre + stationRight * 2.3f + Vector3.up * 2.1f,
+                new Vector3(0.34f, 4.2f, 0.34f),
+                fuelBlue,
+                stationRotation);
+            archRight.transform.SetParent(stationRoot.transform);
+            var archTop = CreateVisualRouteBox(
+                "Fuel Pickup Marker",
+                stationCentre + Vector3.up * 4.05f,
+                new Vector3(5f, 0.75f, 0.55f),
+                fuelOrange,
+                stationRotation);
+            archTop.transform.SetParent(stationRoot.transform);
+
+            var sign = new GameObject("FUEL Sign");
+            sign.transform.SetParent(stationRoot.transform);
+            sign.transform.position = stationCentre - stationForward * 0.32f + Vector3.up * 4.08f;
+            sign.transform.rotation = stationRotation;
+            var text = sign.AddComponent<TextMesh>();
+            text.text = "FUEL";
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.characterSize = 0.42f;
+            text.fontSize = 72;
+            text.color = Color.white;
+
+            var triggerObject = new GameObject("Fuel Collection Zone");
+            triggerObject.transform.SetParent(stationRoot.transform);
+            triggerObject.transform.position = stationCentre + Vector3.up * 1.1f;
+            triggerObject.transform.rotation = stationRotation;
+            var trigger = triggerObject.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(5.2f, 2.8f, 9f);
+            triggerObject.AddComponent<AudioSource>();
+            triggerObject.AddComponent<FuelStation>().Configure(archTop.transform);
+
+            var hud = new GameObject("Fuel HUD");
+            hud.AddComponent<FuelHud>().Configure(truck.GetComponent<FuelTank>());
+        }
+
+        private static void CreateStationPost(
+            Transform parent,
+            Vector3 groundPosition,
+            Quaternion rotation,
+            Material material)
+        {
+            var post = CreateVisualRouteBox(
+                "Fuel Canopy Post",
+                groundPosition + Vector3.up * 1.9f,
+                new Vector3(0.35f, 3.8f, 0.35f),
+                material,
+                rotation);
+            post.transform.SetParent(parent);
         }
 
         private static void CreateTruckDetail(

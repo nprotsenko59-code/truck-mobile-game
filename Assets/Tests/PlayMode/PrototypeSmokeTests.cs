@@ -1,6 +1,7 @@
 using System.Collections;
 using NUnit.Framework;
 using TruckGame.Driving;
+using TruckGame.Fuel;
 using TruckGame.Traffic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -33,9 +34,7 @@ namespace TruckGame.Tests
             SceneManager.LoadScene("Prototype");
             yield return null;
 
-            var traffic = Object.FindObjectsByType<TrafficVehicle>(
-                FindObjectsInactive.Exclude,
-                FindObjectsSortMode.None);
+            var traffic = Object.FindObjectsByType<TrafficVehicle>(FindObjectsInactive.Exclude);
             Assert.That(traffic.Length, Is.GreaterThanOrEqualTo(4));
             Assert.That(System.Array.Exists(traffic, vehicle => vehicle.IsOncoming), Is.True);
             Assert.That(System.Array.Exists(traffic, vehicle => !vehicle.IsOncoming), Is.True);
@@ -58,6 +57,36 @@ namespace TruckGame.Tests
             }
 
             Assert.That(movingVehicles, Is.EqualTo(traffic.Length));
+        }
+
+        [UnityTest]
+        public IEnumerator PrototypeScene_FuelConsumesAndStationRefillsTruck()
+        {
+            SceneManager.LoadScene("Prototype");
+            yield return null;
+
+            var truck = GameObject.Find("Prototype Truck");
+            var tank = truck.GetComponent<FuelTank>();
+            var controller = truck.GetComponent<ArcadeTruckController>();
+            var station = Object.FindAnyObjectByType<FuelStation>(FindObjectsInactive.Exclude);
+            var hud = Object.FindAnyObjectByType<FuelHud>(FindObjectsInactive.Exclude);
+            Assert.That(tank, Is.Not.Null, "FuelTank is missing from the player truck.");
+            Assert.That(station, Is.Not.Null, "Fuel station is missing from the prototype scene.");
+            Assert.That(hud, Is.Not.Null, "Fuel HUD is missing from the prototype scene.");
+
+            var startingFuel = tank.CurrentFuel;
+            yield return new WaitForSeconds(1.25f);
+            Assert.That(tank.CurrentFuel, Is.LessThan(startingFuel));
+
+            tank.Consume(30f);
+            var addedFuel = station.Refuel(tank);
+            Assert.That(addedFuel, Is.GreaterThan(0f));
+            Assert.That(tank.CurrentFuel, Is.EqualTo(tank.Capacity).Within(0.001f));
+            Assert.That(tank.State, Is.EqualTo(FuelState.Normal));
+
+            tank.Consume(tank.Capacity);
+            Assert.That(tank.RunFailed, Is.True);
+            Assert.That(controller.HasPower, Is.False);
         }
     }
 }

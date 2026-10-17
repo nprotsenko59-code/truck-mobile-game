@@ -27,5 +27,18 @@ namespace TruckGame.Traffic
             var right = Vector3.Cross(Vector3.up, tangent).normalized;
             return points[index] + right * laneOffset;
         }
+
+        public Vector3 GetForward(int index)
+        {
+            if (PointCount < 2)
+            {
+                return transform.forward;
+            }
+
+            index = Mathf.Clamp(index, 0, PointCount - 1);
+            var previous = points[Mathf.Max(0, index - 1)];
+            var next = points[Mathf.Min(PointCount - 1, index + 1)];
+            return (next - previous).normalized;
+        }
     }
 }

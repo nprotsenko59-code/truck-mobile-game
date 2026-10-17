@@ -9,6 +9,7 @@ namespace TruckGame.Driving
         [Min(1f)] public float targetSpeedMps = 16f;
         [Min(0f)] public float motorTorque = 2400f;
         [Min(0f)] public float overspeedBrakeTorque = 3500f;
+        [Min(0f)] public float outOfFuelBrakeTorque = 900f;
 
         [Header("Steering")]
         [Min(0f)] public float lowSpeedReferenceMps = 5f;
@@ -24,4 +25,3 @@ namespace TruckGame.Driving
         public Vector3 centerOfMassOffset = new(0f, -0.7f, 0.1f);
     }
 }
-
