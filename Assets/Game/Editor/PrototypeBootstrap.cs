@@ -3,6 +3,7 @@ using TruckGame.CameraSystem;
 using TruckGame.Core;
 using TruckGame.Driving;
 using TruckGame.Input;
+using TruckGame.Traffic;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.SceneManagement;
@@ -33,8 +34,9 @@ namespace TruckGame.Editor
 
             CreateRuntimeRoot();
             CreateLighting();
-            CreateRoad();
+            var route = CreateRoad();
             var truck = CreateTruck(tuning);
+            CreateTraffic(route);
             CreateCamera(truck.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -112,7 +114,7 @@ namespace TruckGame.Editor
             RenderSettings.fogEndDistance = 190f;
         }
 
-        private static void CreateRoad()
+        private static TrafficRoute CreateRoad()
         {
             var roadMaterial = EnsureMaterial(
                 "Assets/Game/Materials/Road.mat",
@@ -161,7 +163,11 @@ namespace TruckGame.Editor
                 0f, 0f
             };
 
+            var routeObject = new GameObject("Traffic Route");
+            var route = routeObject.AddComponent<TrafficRoute>();
+            var routePoints = new List<Vector3>();
             var cursor = new Vector3(0f, 0f, -18f);
+            routePoints.Add(cursor);
             for (var index = 0; index < yaws.Length; index++)
             {
                 var rotation = Quaternion.Euler(0f, yaws[index], 0f);
@@ -232,7 +238,111 @@ namespace TruckGame.Editor
                 }
 
                 cursor += forward * segmentLength;
+                routePoints.Add(cursor);
             }
+
+            route.Configure(routePoints.ToArray());
+            return route;
+        }
+
+        private static void CreateTraffic(TrafficRoute route)
+        {
+            var red = EnsureMaterial(
+                "Assets/Game/Materials/TrafficRed.mat",
+                new Color(0.78f, 0.08f, 0.06f),
+                0.4f);
+            var yellow = EnsureMaterial(
+                "Assets/Game/Materials/TrafficYellow.mat",
+                new Color(0.95f, 0.55f, 0.04f),
+                0.4f);
+            var teal = EnsureMaterial(
+                "Assets/Game/Materials/TrafficTeal.mat",
+                new Color(0.02f, 0.52f, 0.54f),
+                0.4f);
+            var white = EnsureMaterial(
+                "Assets/Game/Materials/TrafficWhite.mat",
+                new Color(0.78f, 0.82f, 0.84f),
+                0.35f);
+            var dark = EnsureMaterial(
+                "Assets/Game/Materials/TruckDark.mat",
+                new Color(0.035f, 0.055f, 0.075f),
+                0.38f);
+            var glass = EnsureMaterial(
+                "Assets/Game/Materials/TruckGlass.mat",
+                new Color(0.24f, 0.65f, 0.82f),
+                0.72f);
+            var tire = EnsureMaterial(
+                "Assets/Game/Materials/Tire.mat",
+                new Color(0.018f, 0.022f, 0.028f),
+                0.18f);
+
+            var root = new GameObject("Traffic");
+            CreateTrafficVehicle(root.transform, "Slow Red Car", route, red, dark, glass, tire, -2.6f, 9.5f, false, 5);
+            CreateTrafficVehicle(root.transform, "Yellow Van", route, yellow, dark, glass, tire, -2.6f, 11f, false, 15);
+            CreateTrafficVehicle(root.transform, "Oncoming Teal Car", route, teal, dark, glass, tire, 2.6f, 14f, true, 9);
+            CreateTrafficVehicle(root.transform, "Oncoming White Car", route, white, dark, glass, tire, 2.6f, 13f, true, 18);
+            CreateTrafficVehicle(root.transform, "Oncoming Red Car", route, red, dark, glass, tire, 2.6f, 15f, true, 24);
+        }
+
+        private static void CreateTrafficVehicle(
+            Transform parent,
+            string name,
+            TrafficRoute route,
+            Material bodyMaterial,
+            Material darkMaterial,
+            Material glassMaterial,
+            Material tireMaterial,
+            float laneOffset,
+            float speed,
+            bool oncoming,
+            int startPoint)
+        {
+            var vehicle = new GameObject(name);
+            vehicle.transform.SetParent(parent);
+
+            var collider = vehicle.AddComponent<BoxCollider>();
+            collider.center = new Vector3(0f, 0.62f, 0f);
+            collider.size = new Vector3(1.9f, 1.25f, 3.8f);
+
+            var body = vehicle.AddComponent<Rigidbody>();
+            body.isKinematic = true;
+            body.interpolation = RigidbodyInterpolation.Interpolate;
+            body.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
+
+            CreateVehicleDetail(vehicle.transform, "Lower Body", new Vector3(0f, 0.55f, 0f), new Vector3(1.85f, 0.65f, 3.7f), bodyMaterial);
+            CreateVehicleDetail(vehicle.transform, "Cabin", new Vector3(0f, 1.08f, -0.15f), new Vector3(1.55f, 0.7f, 1.8f), bodyMaterial);
+            CreateVehicleDetail(vehicle.transform, "Windshield", new Vector3(0f, 1.16f, 0.775f), new Vector3(1.3f, 0.42f, 0.055f), glassMaterial);
+            CreateVehicleDetail(vehicle.transform, "Front Grille", new Vector3(0f, 0.52f, 1.88f), new Vector3(1.2f, 0.28f, 0.07f), darkMaterial);
+            CreateTrafficWheel(vehicle.transform, new Vector3(-0.93f, 0.38f, 1.15f), tireMaterial);
+            CreateTrafficWheel(vehicle.transform, new Vector3(0.93f, 0.38f, 1.15f), tireMaterial);
+            CreateTrafficWheel(vehicle.transform, new Vector3(-0.93f, 0.38f, -1.15f), tireMaterial);
+            CreateTrafficWheel(vehicle.transform, new Vector3(0.93f, 0.38f, -1.15f), tireMaterial);
+
+            vehicle.AddComponent<TrafficVehicle>().Configure(route, laneOffset, speed, oncoming, startPoint);
+        }
+
+        private static void CreateVehicleDetail(
+            Transform parent,
+            string name,
+            Vector3 localPosition,
+            Vector3 localScale,
+            Material material)
+        {
+            var detail = CreateVisualBox(name, Vector3.zero, localScale, material);
+            detail.transform.SetParent(parent, false);
+            detail.transform.localPosition = localPosition;
+        }
+
+        private static void CreateTrafficWheel(Transform parent, Vector3 localPosition, Material material)
+        {
+            var wheel = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            wheel.name = "Wheel";
+            wheel.transform.SetParent(parent, false);
+            wheel.transform.localPosition = localPosition;
+            wheel.transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
+            wheel.transform.localScale = new Vector3(0.38f, 0.18f, 0.38f);
+            Object.DestroyImmediate(wheel.GetComponent<Collider>());
+            wheel.GetComponent<Renderer>().sharedMaterial = material;
         }
 
         private static GameObject CreateTruck(TruckTuning tuning)
