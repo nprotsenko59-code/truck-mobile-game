@@ -31,6 +31,8 @@ namespace TruckGame.Fuel
         public float Capacity => capacity;
         public float CurrentFuel => currentFuel;
         public float NormalizedFuel => capacity <= 0f ? 0f : currentFuel / capacity;
+        public float TotalConsumed { get; private set; }
+        public float TotalRefueled { get; private set; }
         public bool HasFuel => currentFuel > 0.001f;
         public bool RunFailed => State == FuelState.Empty;
         public FuelState State => EvaluateState(NormalizedFuel, lowThreshold, criticalThreshold);
@@ -48,6 +50,8 @@ namespace TruckGame.Fuel
             lowThreshold = Mathf.Clamp01(lowFuelThreshold);
             criticalThreshold = Mathf.Clamp(criticalFuelThreshold, 0f, lowThreshold);
             currentFuel = startingFuel;
+            TotalConsumed = 0f;
+            TotalRefueled = 0f;
             previousState = State;
         }
 
@@ -81,7 +85,9 @@ namespace TruckGame.Fuel
                 return;
             }
 
-            SetFuel(currentFuel - amount);
+            var consumed = Mathf.Min(amount, currentFuel);
+            TotalConsumed += consumed;
+            SetFuel(currentFuel - consumed);
         }
 
         public float RefuelToFull()
@@ -93,6 +99,7 @@ namespace TruckGame.Fuel
             }
 
             SetFuel(capacity);
+            TotalRefueled += addedFuel;
             Refueled?.Invoke(addedFuel);
             return addedFuel;
         }

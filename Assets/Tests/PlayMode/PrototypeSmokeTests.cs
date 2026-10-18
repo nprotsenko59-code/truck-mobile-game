@@ -1,5 +1,6 @@
 using System.Collections;
 using NUnit.Framework;
+using TruckGame.Cargo;
 using TruckGame.Delivery;
 using TruckGame.Driving;
 using TruckGame.Fuel;
@@ -98,13 +99,17 @@ namespace TruckGame.Tests
 
             var truck = GameObject.Find("Prototype Truck");
             var run = truck.GetComponent<DeliveryRunController>();
+            var cargo = truck.GetComponent<CargoTracker>();
             var destination = Object.FindAnyObjectByType<DestinationZone>(FindObjectsInactive.Exclude);
             var hud = Object.FindAnyObjectByType<DeliveryHud>(FindObjectsInactive.Exclude);
+            var cargoHud = Object.FindAnyObjectByType<CargoHud>(FindObjectsInactive.Exclude);
             var route = Object.FindAnyObjectByType<TrafficRoute>(FindObjectsInactive.Exclude);
 
             Assert.That(run, Is.Not.Null, "Delivery run controller is missing from the truck.");
+            Assert.That(cargo, Is.Not.Null, "Cargo tracking is missing from the truck.");
             Assert.That(destination, Is.Not.Null, "Hotel destination is missing from the scene.");
             Assert.That(hud, Is.Not.Null, "Delivery HUD is missing from the scene.");
+            Assert.That(cargoHud, Is.Not.Null, "Cargo HUD is missing from the scene.");
             Assert.That(route.TotalLength, Is.InRange(16f * 60f, 16f * 180f));
             Assert.That(run.DistanceRemaining, Is.GreaterThan(900f));
             Assert.That(run.State, Is.EqualTo(DeliveryState.Running));
@@ -112,6 +117,7 @@ namespace TruckGame.Tests
             run.CompleteDelivery();
             Assert.That(run.State, Is.EqualTo(DeliveryState.Delivered));
             Assert.That(run.Payout, Is.EqualTo(1250));
+            Assert.That(run.Score.Total, Is.EqualTo(100));
             Assert.That(truck.GetComponent<ArcadeTruckController>().HasPower, Is.False);
         }
     }

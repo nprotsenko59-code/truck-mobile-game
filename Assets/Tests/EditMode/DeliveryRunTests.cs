@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using TruckGame.Cargo;
 using TruckGame.Delivery;
 using TruckGame.Fuel;
 using TruckGame.Traffic;
@@ -12,6 +13,7 @@ namespace TruckGame.Tests
         private GameObject truck;
         private TrafficRoute route;
         private FuelTank tank;
+        private CargoTracker cargo;
         private DeliveryRunController deliveryRun;
 
         [SetUp]
@@ -30,8 +32,10 @@ namespace TruckGame.Tests
             truck.AddComponent<Rigidbody>();
             tank = truck.AddComponent<FuelTank>();
             tank.Configure(100f, 50f, 1f, 0.35f, 0.15f);
+            cargo = truck.AddComponent<CargoTracker>();
+            cargo.Configure("Hotel Supplies", 4f, 5f, 22f, 2.5f);
             deliveryRun = truck.AddComponent<DeliveryRunController>();
-            deliveryRun.Configure(truck.transform, tank, route, null, null, 1250);
+            deliveryRun.Configure(truck.transform, tank, cargo, route, null, null, 1250);
         }
 
         [TearDown]
@@ -68,6 +72,19 @@ namespace TruckGame.Tests
 
             Assert.That(deliveryRun.State, Is.EqualTo(DeliveryState.FailedFuel));
             Assert.That(deliveryRun.Payout, Is.Zero);
+        }
+
+        [Test]
+        public void DamagedCargo_ReducesScoreAndPayout()
+        {
+            cargo.ApplyImpact(14f);
+
+            deliveryRun.CompleteDelivery();
+
+            Assert.That(deliveryRun.Score.Cargo, Is.EqualTo(30));
+            Assert.That(deliveryRun.Score.Safety, Is.EqualTo(15));
+            Assert.That(deliveryRun.Score.Total, Is.LessThan(100));
+            Assert.That(deliveryRun.Payout, Is.LessThan(1250));
         }
     }
 }

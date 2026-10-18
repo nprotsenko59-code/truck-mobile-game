@@ -11,6 +11,7 @@ namespace TruckGame.Delivery
         private GUIStyle valueStyle;
         private GUIStyle resultTitleStyle;
         private GUIStyle resultBodyStyle;
+        private GUIStyle breakdownStyle;
         private GUIStyle buttonStyle;
 
         public void Configure(DeliveryRunController run)
@@ -82,9 +83,9 @@ namespace TruckGame.Delivery
 
             var panel = new Rect(
                 Screen.width * 0.5f - 250f * scale,
-                Screen.height * 0.5f - 155f * scale,
+                Screen.height * 0.5f - 215f * scale,
                 500f * scale,
-                310f * scale);
+                430f * scale);
             GUI.color = new Color(0.025f, 0.035f, 0.05f, 0.97f);
             GUI.DrawTexture(panel, Texture2D.whiteTexture);
             GUI.color = Color.white;
@@ -103,14 +104,36 @@ namespace TruckGame.Delivery
                 resultBodyStyle);
             GUI.Label(
                 new Rect(panel.x + 20f * scale, panel.y + 134f * scale, panel.width - 40f * scale, 32f * scale),
-                $"TIME  {FormatTime(deliveryRun.ElapsedSeconds)}     PAYOUT  ${deliveryRun.Payout:N0}",
+                $"CARGO  {Mathf.RoundToInt(deliveryRun.CargoConditionPercent)}%     TIME  {FormatTime(deliveryRun.ElapsedSeconds)}",
+                resultBodyStyle);
+
+            var score = deliveryRun.Score;
+            GUI.Label(
+                new Rect(panel.x + 54f * scale, panel.y + 184f * scale, panel.width - 108f * scale, 30f * scale),
+                $"Cargo condition     {score.Cargo}/60",
+                breakdownStyle);
+            GUI.Label(
+                new Rect(panel.x + 54f * scale, panel.y + 218f * scale, panel.width - 108f * scale, 30f * scale),
+                $"Safe driving          {score.Safety}/20",
+                breakdownStyle);
+            GUI.Label(
+                new Rect(panel.x + 54f * scale, panel.y + 252f * scale, panel.width - 108f * scale, 30f * scale),
+                $"Fuel efficiency       {score.Fuel}/10",
+                breakdownStyle);
+            GUI.Label(
+                new Rect(panel.x + 54f * scale, panel.y + 286f * scale, panel.width - 108f * scale, 30f * scale),
+                $"Delivery time         {score.Time}/10",
+                breakdownStyle);
+            GUI.Label(
+                new Rect(panel.x + 20f * scale, panel.y + 326f * scale, panel.width - 40f * scale, 34f * scale),
+                $"SCORE  {score.Total}/100     PAYOUT  ${deliveryRun.Payout:N0}",
                 resultBodyStyle);
 
             var button = new Rect(
                 panel.x + 110f * scale,
-                panel.yMax - 82f * scale,
+                panel.yMax - 58f * scale,
                 panel.width - 220f * scale,
-                48f * scale);
+                42f * scale);
             if (GUI.Button(button, "RESTART  [R]", buttonStyle))
             {
                 deliveryRun.Restart();
@@ -141,6 +164,11 @@ namespace TruckGame.Delivery
             {
                 fontSize = 19,
                 alignment = TextAnchor.MiddleCenter
+            };
+            breakdownStyle ??= new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 16,
+                alignment = TextAnchor.MiddleLeft
             };
             buttonStyle ??= new GUIStyle(GUI.skin.button)
             {

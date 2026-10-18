@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using TruckGame.CameraSystem;
+using TruckGame.Cargo;
 using TruckGame.Core;
 using TruckGame.Delivery;
 using TruckGame.Driving;
@@ -31,6 +32,7 @@ namespace TruckGame.Editor
             EnsureFolder("Assets/Game/Materials");
             EnsureFolder("Assets/Game/Fuel");
             EnsureFolder("Assets/Game/Delivery");
+            EnsureFolder("Assets/Game/Cargo");
 
             var pipeline = EnsureRenderPipeline();
             var tuning = EnsureTuning();
@@ -369,6 +371,8 @@ namespace TruckGame.Editor
             var controller = truck.AddComponent<ArcadeTruckController>();
             var fuelTank = truck.AddComponent<FuelTank>();
             fuelTank.Configure(100f, 52f, 0.65f, 0.35f, 0.15f);
+            var cargoTracker = truck.AddComponent<CargoTracker>();
+            cargoTracker.Configure("Hotel Supplies", 4f, 5f, 22f, 2.5f);
             truck.AddComponent<TruckRecovery>();
             var visualSync = truck.AddComponent<WheelVisualSync>();
 
@@ -643,6 +647,7 @@ namespace TruckGame.Editor
             deliveryRun.Configure(
                 truck.transform,
                 truck.GetComponent<FuelTank>(),
+                truck.GetComponent<CargoTracker>(),
                 route,
                 triggerObject.transform,
                 truck.GetComponent<ArcadeTruckController>(),
@@ -651,6 +656,9 @@ namespace TruckGame.Editor
 
             var hud = new GameObject("Delivery HUD");
             hud.AddComponent<DeliveryHud>().Configure(deliveryRun);
+
+            var cargoHud = new GameObject("Cargo HUD");
+            cargoHud.AddComponent<CargoHud>().Configure(truck.GetComponent<CargoTracker>());
         }
 
         private static void CreateWarehouse(Transform parent, TrafficRoute route, Material buildingMaterial, Material accentMaterial)

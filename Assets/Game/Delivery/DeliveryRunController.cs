@@ -1,4 +1,5 @@
 using System;
+using TruckGame.Cargo;
 using TruckGame.Driving;
 using TruckGame.Fuel;
 using TruckGame.Traffic;
@@ -18,6 +19,7 @@ namespace TruckGame.Delivery
     {
         [SerializeField] private Transform truck;
         [SerializeField] private FuelTank fuelTank;
+        [SerializeField] private CargoTracker cargoTracker;
         [SerializeField] private TrafficRoute route;
         [SerializeField] private Transform destination;
         [SerializeField] private ArcadeTruckController truckController;
@@ -26,12 +28,18 @@ namespace TruckGame.Delivery
 
         private float startedAt;
         private float finishedAt;
+        private DeliveryScoreBreakdown finalScore;
 
         public event Action<DeliveryState> StateChanged;
 
         public DeliveryState State => state;
         public bool IsRunning => state == DeliveryState.Running;
-        public int Payout => state == DeliveryState.Delivered ? basePayout : 0;
+        public CargoTracker Cargo => cargoTracker;
+        public float CargoConditionPercent => cargoTracker == null ? 100f : cargoTracker.ConditionPercent;
+        public DeliveryScoreBreakdown Score => IsRunning ? CalculateScore() : finalScore;
+        public int Payout => state == DeliveryState.Delivered
+            ? DeliveryPerformance.CalculatePayout(basePayout, finalScore)
+            : 0;
         public float ElapsedSeconds => (IsRunning ? Time.time : finishedAt) - startedAt;
         public float DistanceRemaining => route == null || truck == null
             ? 0f
@@ -43,6 +51,7 @@ namespace TruckGame.Delivery
         public void Configure(
             Transform playerTruck,
             FuelTank tank,
+            CargoTracker cargo,
             TrafficRoute trafficRoute,
             Transform destinationTransform,
             ArcadeTruckController controller,
@@ -51,18 +60,42 @@ namespace TruckGame.Delivery
             Unsubscribe();
             truck = playerTruck;
             fuelTank = tank;
+            cargoTracker = cargo;
             route = trafficRoute;
             destination = destinationTransform;
             truckController = controller;
             basePayout = Mathf.Max(0, payout);
             state = DeliveryState.Running;
+            startedAt = Time.time;
+            finishedAt = startedAt;
+            cargoTracker?.SetTrackingEnabled(true);
+            finalScore = CalculateScore();
             Subscribe();
+        }
+
+        public void Configure(
+            Transform playerTruck,
+            FuelTank tank,
+            TrafficRoute trafficRoute,
+            Transform destinationTransform,
+            ArcadeTruckController controller,
+            int payout)
+        {
+            Configure(
+                playerTruck,
+                tank,
+                playerTruck == null ? null : playerTruck.GetComponent<CargoTracker>(),
+                trafficRoute,
+                destinationTransform,
+                controller,
+                payout);
         }
 
         private void Awake()
         {
             truck ??= transform;
             fuelTank ??= GetComponent<FuelTank>();
+            cargoTracker ??= GetComponent<CargoTracker>();
             truckController ??= GetComponent<ArcadeTruckController>();
         }
 
@@ -121,8 +154,20 @@ namespace TruckGame.Delivery
 
             state = result;
             finishedAt = Time.time;
+            finalScore = CalculateScore();
+            cargoTracker?.SetTrackingEnabled(false);
             truckController?.SetDriveEnabled(false);
             StateChanged?.Invoke(state);
+        }
+
+        private DeliveryScoreBreakdown CalculateScore()
+        {
+            return DeliveryPerformance.Calculate(
+                CargoConditionPercent,
+                cargoTracker == null ? 0 : cargoTracker.CollisionCount,
+                fuelTank == null ? 0f : fuelTank.TotalConsumed,
+                fuelTank == null ? 100f : fuelTank.Capacity,
+                ElapsedSeconds);
         }
 
         private void Subscribe()
