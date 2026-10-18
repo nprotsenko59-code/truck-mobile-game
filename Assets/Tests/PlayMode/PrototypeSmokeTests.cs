@@ -1,5 +1,6 @@
 using System.Collections;
 using NUnit.Framework;
+using TruckGame.Delivery;
 using TruckGame.Driving;
 using TruckGame.Fuel;
 using TruckGame.Traffic;
@@ -87,6 +88,31 @@ namespace TruckGame.Tests
             tank.Consume(tank.Capacity);
             Assert.That(tank.RunFailed, Is.True);
             Assert.That(controller.HasPower, Is.False);
+        }
+
+        [UnityTest]
+        public IEnumerator PrototypeScene_DeliveryHasProgressDestinationAndResults()
+        {
+            SceneManager.LoadScene("Prototype");
+            yield return null;
+
+            var truck = GameObject.Find("Prototype Truck");
+            var run = truck.GetComponent<DeliveryRunController>();
+            var destination = Object.FindAnyObjectByType<DestinationZone>(FindObjectsInactive.Exclude);
+            var hud = Object.FindAnyObjectByType<DeliveryHud>(FindObjectsInactive.Exclude);
+            var route = Object.FindAnyObjectByType<TrafficRoute>(FindObjectsInactive.Exclude);
+
+            Assert.That(run, Is.Not.Null, "Delivery run controller is missing from the truck.");
+            Assert.That(destination, Is.Not.Null, "Hotel destination is missing from the scene.");
+            Assert.That(hud, Is.Not.Null, "Delivery HUD is missing from the scene.");
+            Assert.That(route.TotalLength, Is.InRange(16f * 60f, 16f * 180f));
+            Assert.That(run.DistanceRemaining, Is.GreaterThan(900f));
+            Assert.That(run.State, Is.EqualTo(DeliveryState.Running));
+
+            run.CompleteDelivery();
+            Assert.That(run.State, Is.EqualTo(DeliveryState.Delivered));
+            Assert.That(run.Payout, Is.EqualTo(1250));
+            Assert.That(truck.GetComponent<ArcadeTruckController>().HasPower, Is.False);
         }
     }
 }

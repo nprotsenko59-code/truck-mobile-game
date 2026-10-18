@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TruckGame.CameraSystem;
 using TruckGame.Core;
+using TruckGame.Delivery;
 using TruckGame.Driving;
 using TruckGame.Fuel;
 using TruckGame.Input;
@@ -29,6 +30,7 @@ namespace TruckGame.Editor
             EnsureFolder("Assets/Game/Settings");
             EnsureFolder("Assets/Game/Materials");
             EnsureFolder("Assets/Game/Fuel");
+            EnsureFolder("Assets/Game/Delivery");
 
             var pipeline = EnsureRenderPipeline();
             var tuning = EnsureTuning();
@@ -40,6 +42,7 @@ namespace TruckGame.Editor
             var truck = CreateTruck(tuning);
             CreateTraffic(route);
             CreateFuelSystem(truck, route);
+            CreateDeliverySystem(truck, route);
             CreateCamera(truck.transform);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -151,7 +154,7 @@ namespace TruckGame.Editor
 
             // A single flat collision surface keeps the greybox drive smooth while the
             // visual road tiles provide the route shape above it.
-            CreateBox("Terrain", new Vector3(15f, -0.3f, 105f), new Vector3(300f, 0.6f, 300f), grassMaterial);
+            CreateBox("Terrain", new Vector3(0f, -0.3f, 450f), new Vector3(500f, 0.6f, 1300f), grassMaterial);
 
             const float segmentLength = 12f;
             const float roadWidth = 14f;
@@ -163,7 +166,11 @@ namespace TruckGame.Editor
             {
                 0f, 0f, 0f, 4f, 8f, 12f, 16f, 20f, 20f, 16f, 12f, 8f, 4f,
                 0f, -4f, -8f, -12f, -16f, -20f, -20f, -16f, -12f, -8f, -4f,
-                0f, 0f
+                0f, 0f, 0f, -4f, -8f, -12f, -16f, -12f, -8f, -4f, 0f, 4f,
+                8f, 12f, 16f, 20f, 24f, 24f, 20f, 16f, 12f, 8f, 4f, 0f, -4f,
+                -8f, -12f, -16f, -20f, -24f, -24f, -20f, -16f, -12f, -8f, -4f,
+                0f, 0f, 0f, 4f, 8f, 12f, 16f, 20f, 20f, 16f, 12f, 8f, 4f, 0f,
+                -4f, -8f, -12f, -16f, -20f, -20f, -16f, -12f, -8f, -4f, 0f, 0f
             };
 
             var routeObject = new GameObject("Traffic Route");
@@ -361,7 +368,7 @@ namespace TruckGame.Editor
             var input = truck.AddComponent<SteeringInput>();
             var controller = truck.AddComponent<ArcadeTruckController>();
             var fuelTank = truck.AddComponent<FuelTank>();
-            fuelTank.Configure(100f, 52f, 3.2f, 0.35f, 0.15f);
+            fuelTank.Configure(100f, 52f, 0.65f, 0.35f, 0.15f);
             truck.AddComponent<TruckRecovery>();
             var visualSync = truck.AddComponent<WheelVisualSync>();
 
@@ -548,6 +555,147 @@ namespace TruckGame.Editor
 
             var hud = new GameObject("Fuel HUD");
             hud.AddComponent<FuelHud>().Configure(truck.GetComponent<FuelTank>());
+        }
+
+        private static void CreateDeliverySystem(GameObject truck, TrafficRoute route)
+        {
+            var gold = EnsureMaterial(
+                "Assets/Game/Materials/DestinationGold.mat",
+                new Color(1f, 0.65f, 0.08f),
+                0.48f);
+            var green = EnsureMaterial(
+                "Assets/Game/Materials/DestinationGreen.mat",
+                new Color(0.08f, 0.72f, 0.45f),
+                0.42f);
+            var warmWhite = EnsureMaterial(
+                "Assets/Game/Materials/HotelWarm.mat",
+                new Color(0.88f, 0.79f, 0.65f),
+                0.24f);
+            var dark = EnsureMaterial(
+                "Assets/Game/Materials/TruckDark.mat",
+                new Color(0.035f, 0.055f, 0.075f),
+                0.38f);
+
+            var root = new GameObject("Delivery Landmarks");
+            CreateWarehouse(root.transform, route, dark, gold);
+
+            var destinationIndex = route.PointCount - 1;
+            var forward = route.GetForward(destinationIndex);
+            var right = Vector3.Cross(Vector3.up, forward).normalized;
+            var rotation = Quaternion.LookRotation(forward, Vector3.up);
+            var centre = route.GetLanePoint(destinationIndex, 2.6f) - forward * 5f;
+
+            var arrivalLane = CreateVisualRouteBox(
+                "Hotel Arrival Zone",
+                centre + Vector3.up * 0.08f,
+                new Vector3(6.2f, 0.08f, 15f),
+                green,
+                rotation);
+            arrivalLane.transform.SetParent(root.transform);
+
+            var archLeft = CreateVisualRouteBox(
+                "Destination Arch Left",
+                centre - right * 3.25f + Vector3.up * 2.45f,
+                new Vector3(0.42f, 4.9f, 0.42f),
+                gold,
+                rotation);
+            archLeft.transform.SetParent(root.transform);
+            var archRight = CreateVisualRouteBox(
+                "Destination Arch Right",
+                centre + right * 3.25f + Vector3.up * 2.45f,
+                new Vector3(0.42f, 4.9f, 0.42f),
+                gold,
+                rotation);
+            archRight.transform.SetParent(root.transform);
+            var archTop = CreateVisualRouteBox(
+                "Destination Arch Top",
+                centre + Vector3.up * 4.72f,
+                new Vector3(7f, 0.75f, 0.6f),
+                green,
+                rotation);
+            archTop.transform.SetParent(root.transform);
+            CreateWorldText(root.transform, "HOTEL Sign", "HOTEL", centre - forward * 0.34f + Vector3.up * 4.75f, rotation, 0.42f);
+
+            var hotel = CreateVisualRouteBox(
+                "Destination Hotel",
+                centre + right * 12f - forward * 2f + Vector3.up * 3.3f,
+                new Vector3(12f, 6.6f, 18f),
+                warmWhite,
+                rotation);
+            hotel.transform.SetParent(root.transform);
+            var hotelDoor = CreateVisualRouteBox(
+                "Hotel Entrance",
+                centre + right * 6.05f - forward * 2f + Vector3.up * 1.45f,
+                new Vector3(0.25f, 2.9f, 3.2f),
+                dark,
+                rotation);
+            hotelDoor.transform.SetParent(root.transform);
+
+            var triggerObject = new GameObject("Hotel Delivery Zone");
+            triggerObject.transform.SetParent(root.transform);
+            triggerObject.transform.position = centre + Vector3.up * 1.5f;
+            triggerObject.transform.rotation = rotation;
+            var trigger = triggerObject.AddComponent<BoxCollider>();
+            trigger.isTrigger = true;
+            trigger.size = new Vector3(7f, 3.5f, 9f);
+
+            var deliveryRun = truck.AddComponent<DeliveryRunController>();
+            deliveryRun.Configure(
+                truck.transform,
+                truck.GetComponent<FuelTank>(),
+                route,
+                triggerObject.transform,
+                truck.GetComponent<ArcadeTruckController>(),
+                1250);
+            triggerObject.AddComponent<DestinationZone>().Configure(deliveryRun);
+
+            var hud = new GameObject("Delivery HUD");
+            hud.AddComponent<DeliveryHud>().Configure(deliveryRun);
+        }
+
+        private static void CreateWarehouse(Transform parent, TrafficRoute route, Material buildingMaterial, Material accentMaterial)
+        {
+            const int originIndex = 1;
+            var forward = route.GetForward(originIndex);
+            var right = Vector3.Cross(Vector3.up, forward).normalized;
+            var rotation = Quaternion.LookRotation(forward, Vector3.up);
+            var centre = route.GetPoint(originIndex) - right * 22f;
+
+            var warehouse = CreateVisualRouteBox(
+                "Origin Warehouse",
+                centre + Vector3.up * 2.6f,
+                new Vector3(13f, 5.2f, 15f),
+                buildingMaterial,
+                rotation);
+            warehouse.transform.SetParent(parent);
+            var loadingDoor = CreateVisualRouteBox(
+                "Warehouse Loading Door",
+                centre + right * 6.55f + Vector3.up * 1.55f,
+                new Vector3(0.22f, 3.1f, 4.8f),
+                accentMaterial,
+                rotation);
+            loadingDoor.transform.SetParent(parent);
+        }
+
+        private static void CreateWorldText(
+            Transform parent,
+            string name,
+            string content,
+            Vector3 position,
+            Quaternion rotation,
+            float characterSize)
+        {
+            var sign = new GameObject(name);
+            sign.transform.SetParent(parent);
+            sign.transform.position = position;
+            sign.transform.rotation = rotation;
+            var text = sign.AddComponent<TextMesh>();
+            text.text = content;
+            text.anchor = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignment.Center;
+            text.characterSize = characterSize;
+            text.fontSize = 72;
+            text.color = Color.white;
         }
 
         private static void CreateStationPost(

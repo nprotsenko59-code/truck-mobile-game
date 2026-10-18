@@ -15,10 +15,11 @@ namespace TruckGame.Driving
         [SerializeField] private WheelCollider[] rearWheels;
 
         private float currentSteering;
+        private bool driveEnabled = true;
 
         public float SpeedMps => body == null ? 0f : body.linearVelocity.magnitude;
         public float CurrentSteering => currentSteering;
-        public bool HasPower => fuelTank == null || fuelTank.HasFuel;
+        public bool HasPower => driveEnabled && (fuelTank == null || fuelTank.HasFuel);
 
         public void Configure(
             Rigidbody truckBody,
@@ -38,6 +39,11 @@ namespace TruckGame.Driving
         public void ConfigureFuelTank(FuelTank tank)
         {
             fuelTank = tank;
+        }
+
+        public void SetDriveEnabled(bool enabled)
+        {
+            driveEnabled = enabled;
         }
 
         private void Awake()
