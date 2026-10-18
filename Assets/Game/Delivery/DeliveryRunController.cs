@@ -10,6 +10,7 @@ namespace TruckGame.Delivery
 {
     public enum DeliveryState
     {
+        AwaitingJob,
         Running,
         Delivered,
         FailedFuel
@@ -25,6 +26,7 @@ namespace TruckGame.Delivery
         [SerializeField] private ArcadeTruckController truckController;
         [SerializeField, Min(0)] private int basePayout = 1250;
         [SerializeField] private DeliveryState state;
+        [SerializeField] private string currentJobName = "Hotel Delivery";
 
         private float startedAt;
         private float finishedAt;
@@ -34,6 +36,8 @@ namespace TruckGame.Delivery
 
         public DeliveryState State => state;
         public bool IsRunning => state == DeliveryState.Running;
+        public bool IsAwaitingJob => state == DeliveryState.AwaitingJob;
+        public string CurrentJobName => currentJobName;
         public CargoTracker Cargo => cargoTracker;
         public float CargoConditionPercent => cargoTracker == null ? 100f : cargoTracker.ConditionPercent;
         public DeliveryScoreBreakdown Score => IsRunning ? CalculateScore() : finalScore;
@@ -101,7 +105,6 @@ namespace TruckGame.Delivery
 
         private void OnEnable()
         {
-            state = DeliveryState.Running;
             startedAt = Time.time;
             finishedAt = startedAt;
             Subscribe();
@@ -133,8 +136,29 @@ namespace TruckGame.Delivery
 
         public void Restart()
         {
+            Time.timeScale = 1f;
             var activeScene = SceneManager.GetActiveScene();
             SceneManager.LoadScene(activeScene.name);
+        }
+
+        public void PrepareForJobSelection()
+        {
+            state = DeliveryState.AwaitingJob;
+            cargoTracker?.SetTrackingEnabled(false);
+            truckController?.SetDriveEnabled(false);
+        }
+
+        public void BeginJob(string jobName, int payout)
+        {
+            currentJobName = string.IsNullOrWhiteSpace(jobName) ? "Hotel Delivery" : jobName;
+            basePayout = Mathf.Max(0, payout);
+            state = DeliveryState.Running;
+            startedAt = Time.time;
+            finishedAt = startedAt;
+            cargoTracker?.SetTrackingEnabled(true);
+            truckController?.SetDriveEnabled(true);
+            finalScore = CalculateScore();
+            StateChanged?.Invoke(state);
         }
 
         private void HandleFuelStateChanged(FuelState fuelState)

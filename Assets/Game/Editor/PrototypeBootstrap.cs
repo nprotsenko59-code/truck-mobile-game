@@ -4,6 +4,7 @@ using TruckGame.Cargo;
 using TruckGame.Core;
 using TruckGame.Delivery;
 using TruckGame.Driving;
+using TruckGame.Economy;
 using TruckGame.Fuel;
 using TruckGame.Input;
 using TruckGame.Traffic;
@@ -33,6 +34,7 @@ namespace TruckGame.Editor
             EnsureFolder("Assets/Game/Fuel");
             EnsureFolder("Assets/Game/Delivery");
             EnsureFolder("Assets/Game/Cargo");
+            EnsureFolder("Assets/Game/Economy");
 
             var pipeline = EnsureRenderPipeline();
             var tuning = EnsureTuning();
@@ -654,8 +656,26 @@ namespace TruckGame.Editor
                 1250);
             triggerObject.AddComponent<DestinationZone>().Configure(deliveryRun);
 
+            var jobs = new[]
+            {
+                new DeliveryJobDefinition("standard", "STANDARD RUN", "EASY", "LOW", "SAFE", 1250, 56f, 4f, 2f),
+                new DeliveryJobDefinition("priority", "PRIORITY RUN", "MEDIUM", "MEDIUM", "MODERATE", 1550, 52f, 5f, 2.5f),
+                new DeliveryJobDefinition("premium", "PREMIUM RUN", "HARD", "HIGH", "TIGHT", 1800, 48f, 6.5f, 3.25f)
+            };
+            var economyObject = new GameObject("Economy & Job Flow");
+            var economy = economyObject.AddComponent<EconomyGameController>();
+            economy.Configure(
+                deliveryRun,
+                truck.GetComponent<FuelTank>(),
+                truck.GetComponent<CargoTracker>(),
+                truck.GetComponent<ArcadeTruckController>(),
+                jobs);
+
             var hud = new GameObject("Delivery HUD");
-            hud.AddComponent<DeliveryHud>().Configure(deliveryRun);
+            hud.AddComponent<DeliveryHud>().Configure(deliveryRun, economy);
+
+            var jobBoard = new GameObject("Job Board HUD");
+            jobBoard.AddComponent<JobBoardHud>().Configure(economy);
 
             var cargoHud = new GameObject("Cargo HUD");
             cargoHud.AddComponent<CargoHud>().Configure(truck.GetComponent<CargoTracker>());

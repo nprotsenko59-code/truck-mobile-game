@@ -3,6 +3,7 @@ using NUnit.Framework;
 using TruckGame.Cargo;
 using TruckGame.Delivery;
 using TruckGame.Driving;
+using TruckGame.Economy;
 using TruckGame.Fuel;
 using TruckGame.Traffic;
 using UnityEngine;
@@ -23,6 +24,11 @@ namespace TruckGame.Tests
             Assert.That(truck, Is.Not.Null, "Prototype Truck is missing from the scene.");
             Assert.That(truck.GetComponent<ArcadeTruckController>(), Is.Not.Null);
 
+            var economy = Object.FindAnyObjectByType<EconomyGameController>(FindObjectsInactive.Exclude);
+            Assert.That(economy, Is.Not.Null, "Economy controller is missing from the scene.");
+            economy.SetPersistenceEnabled(false);
+            Assert.That(economy.SelectJob(0), Is.True);
+
             var initialPosition = truck.transform.position;
             yield return new WaitForSeconds(2.5f);
 
@@ -37,6 +43,9 @@ namespace TruckGame.Tests
             yield return null;
 
             var traffic = Object.FindObjectsByType<TrafficVehicle>(FindObjectsInactive.Exclude);
+            var economy = Object.FindAnyObjectByType<EconomyGameController>(FindObjectsInactive.Exclude);
+            economy.SetPersistenceEnabled(false);
+            economy.SelectJob(0);
             Assert.That(traffic.Length, Is.GreaterThanOrEqualTo(4));
             Assert.That(System.Array.Exists(traffic, vehicle => vehicle.IsOncoming), Is.True);
             Assert.That(System.Array.Exists(traffic, vehicle => !vehicle.IsOncoming), Is.True);
@@ -68,6 +77,9 @@ namespace TruckGame.Tests
             yield return null;
 
             var truck = GameObject.Find("Prototype Truck");
+            var economy = Object.FindAnyObjectByType<EconomyGameController>(FindObjectsInactive.Exclude);
+            economy.SetPersistenceEnabled(false);
+            economy.SelectJob(0);
             var tank = truck.GetComponent<FuelTank>();
             var controller = truck.GetComponent<ArcadeTruckController>();
             var station = Object.FindAnyObjectByType<FuelStation>(FindObjectsInactive.Exclude);
@@ -100,18 +112,27 @@ namespace TruckGame.Tests
             var truck = GameObject.Find("Prototype Truck");
             var run = truck.GetComponent<DeliveryRunController>();
             var cargo = truck.GetComponent<CargoTracker>();
+            var economy = Object.FindAnyObjectByType<EconomyGameController>(FindObjectsInactive.Exclude);
             var destination = Object.FindAnyObjectByType<DestinationZone>(FindObjectsInactive.Exclude);
             var hud = Object.FindAnyObjectByType<DeliveryHud>(FindObjectsInactive.Exclude);
             var cargoHud = Object.FindAnyObjectByType<CargoHud>(FindObjectsInactive.Exclude);
+            var jobBoard = Object.FindAnyObjectByType<JobBoardHud>(FindObjectsInactive.Exclude);
             var route = Object.FindAnyObjectByType<TrafficRoute>(FindObjectsInactive.Exclude);
 
             Assert.That(run, Is.Not.Null, "Delivery run controller is missing from the truck.");
             Assert.That(cargo, Is.Not.Null, "Cargo tracking is missing from the truck.");
+            Assert.That(economy, Is.Not.Null, "Economy controller is missing from the scene.");
             Assert.That(destination, Is.Not.Null, "Hotel destination is missing from the scene.");
             Assert.That(hud, Is.Not.Null, "Delivery HUD is missing from the scene.");
             Assert.That(cargoHud, Is.Not.Null, "Cargo HUD is missing from the scene.");
+            Assert.That(jobBoard, Is.Not.Null, "Job board HUD is missing from the scene.");
             Assert.That(route.TotalLength, Is.InRange(16f * 60f, 16f * 180f));
             Assert.That(run.DistanceRemaining, Is.GreaterThan(900f));
+            Assert.That(run.State, Is.EqualTo(DeliveryState.AwaitingJob));
+
+            economy.SetPersistenceEnabled(false);
+            Assert.That(economy.JobCount, Is.EqualTo(3));
+            Assert.That(economy.SelectJob(0), Is.True);
             Assert.That(run.State, Is.EqualTo(DeliveryState.Running));
 
             run.CompleteDelivery();
